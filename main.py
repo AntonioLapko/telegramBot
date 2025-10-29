@@ -1,6 +1,25 @@
 # Для Windows python -m venv env
 # env\Scripts\Activate.ps1
-# TOKEN = '8482269363:AAEetzUmFKJGhgx9lCFBQHQptb-LMMJxbZ0'
+
+#docker build -t lapin_telegram_bot .
+#docker images
+#docker run -p 5000:5000 lapin_telegram_bot
+#docker build . -t cr.yandex/crp3cq2680bsrvs24748/lapin_telegram_bot:latest
+#docker push cr.yandex/crp3cq2680bsrvs24748/lapin_telegram_bot:latest
+
+
+
+
+#Настройка SSH
+#Шаг 1. Сгенерируйте SSH‑ключ (если нет): ssh-keygen -t ed25519 -C "ваш_email@example.com"
+#Шаг 2. Добавьте ключ в SSH‑агент: eval "$(ssh-agent -s)"
+#ssh-add ~/.ssh/id_ed25519
+
+#Шаг 3. Добавьте публичный ключ в GitHub: Откройте файл ~/.ssh/id_ed25519.pub и скопируйте его содержимое.
+#Шаг 4. Переключите URL репозитория на SSH: git remote set-url origin git@github.com:AntonioLapko/telegramBot.git
+
+#Проверьте URL репозитория git remote -v
+
 
 import logging
 from telegram import Update
