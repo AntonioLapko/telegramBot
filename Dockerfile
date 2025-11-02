@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY main.py .
 
 # Открываем порт (если приложение веб‑сервер, например Flask)
-EXPOSE 5000
+EXPOSE 8080
 
 # Команда для запуска приложения
 CMD ["python", "main.py"]
