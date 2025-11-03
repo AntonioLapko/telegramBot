@@ -86,7 +86,7 @@ def main():
         listen='0.0.0.0',
         port=8080,
         url_path='/bot',
-        webhook_url='https://d5dgn53kgfesereq4a0j.zj2i1qoy.apigw.yandexcloud.net/bot'  # укажите реальный URL
+        webhook_url='https://d5dgn53kgfesereq4a0j.zj2i1qoy.apigw.yandexcloud.net/bot'
     )
 
     try:
