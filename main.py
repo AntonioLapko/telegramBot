@@ -4,9 +4,13 @@
 #docker build -t lapin_telegram_bot .
 #docker images
 #docker run lapin_telegram_bot
-#docker build . -t cr.yandex/crplo5125gv8esvpt42k/lapin_telegram_bot:1.0.0
-#docker push cr.yandex/crplo5125gv8esvpt42k/lapin_telegram_bot:1.0.0
-#docker tag 9f3a31473d6a cr.yandex/crplo5125gv8esvpt42k/lapin_telegram_bot:1.0.0
+#docker build . -t cr.yandex/crplo5125gv8esvpt42k/lapin_telegram_bot:1.0.7
+#docker push cr.yandex/crplo5125gv8esvpt42k/lapin_telegram_bot:1.0.7
+#docker tag 9f3a31473d6a cr.yandex/crplo5125gv8esvpt42k/lapin_telegram_bot:1.0.2
+
+#TOKEN = "8482269363:AAEetzUmFKJGhgx9lCFBQHQptb-LMMJxbZ0"
+#curl -X POST "https://api.telegram.org/bot8482269363:AAEetzUmFKJGhgx9lCFBQHQptb-LMMJxbZ0/setWebhook" \
+#     -d 'url=https://d5dgn53kgfesereq4a0j.zj2i1qoy.apigw.yandexcloud.net/bot'
 
 
 
@@ -21,119 +25,56 @@
 #Проверьте URL репозитория git remote -v
 
 
-import logging
-from typing import Dict, Any, Union
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Update
-from telegram.ext import (
-    Application,
-    MessageHandler,
-    filters,
-    ContextTypes,
-    CommandHandler,
-)
+from telegram.ext import Application, MessageHandler, filters, ContextTypes
+import json
 import asyncio
+import logging
 
-# Ваш токен от @BotFather
-TOKEN = "8482269363:AAEetzUmFKJGhgx9lCFBQHQptb-LMMJxbZ0"
-
-# Настройка логирования
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(message)s",
-    handlers=[
-        logging.FileHandler("bot.log", encoding="utf-8"),  # Лог в файл
-        logging.StreamHandler(),  # Лог в консоль
-    ],
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Инициализация FastAPI
-app = FastAPI()
+TOKEN = "8482269363:AAEetzUmFKJGhgx9lCFBQHQptb-LMMJxbZ0"
+application = None
 
-# Глобальная переменная для доступа к боту из FastAPI
-bot_app: Union[Application, None] = None
+async def echo_icho(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("И чё?")
 
+class WebhookHandler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        if self.path != '/bot':
+            self.send_error(404, "Not Found")
+            return
 
-# Функция для команды /start
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    chat_id = update.message.chat_id
+        try:
+            content_length = int(self.headers['Content-Length'])
+            body = self.rfile.read(content_length)
+            data = json.loads(body.decode('utf-8'))
 
-    welcome_text = (
-        f"Привет, {user.first_name}! 👋\n\n"
-        "Я простой бот, который отвечает на любые сообщения фразой «И чё?».\n"
-        "Попробуй написать что‑нибудь!"
-    )
+            application.create_task(
+                application.update_queue.put(Update.de_json(data))
+            )
 
-    logger.info(f"Пользователь {user.full_name} (ID: {user.id}) запустил бота (/start)")
-    await update.message.reply_text(welcome_text)
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(b'{"status": "ok"}')
 
+        except json.JSONDecodeError:
+            logger.error("Невалидный JSON в запросе")
+            self.send_error(400, "Bad Request: Invalid JSON")
+        except Exception as e:
+            logger.error(f"Ошибка обработки запроса: {e}")
+            self.send_error(500, "Internal Server Error")
 
-# Функция-обработчик сообщений
-async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    message_text = update.message.text
-    chat_id = update.message.chat_id
+def main():
+    global application
+    application = Application.builder().token(TOKEN).build()
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo_icho))
+    server = HTTPServer(('0.0.0.0', 8080), WebhookHandler)
+    logger.info("Бот слушает HTTP на 0.0.0.0:8080")
+    server.serve_forever()
 
-    logger.info(
-        f"Получено сообщение от пользователя {user.full_name} (ID: {user.id}, "
-        f"чат: {chat_id}): \"{message_text}\""
-    )
-
-    response_text = "И чё?"
-    await update.message.reply_text(response_text)
-
-    logger.info(f"Отправлен ответ в чат {chat_id}: \"{response_text}\"")
-
-# HTTP-эндпоинт POST /hello
-@app.post("/hello")
-async def hello_endpoint(request: Request) -> JSONResponse:
-    try:
-        # Получаем тело запроса как JSON
-        body: Dict[str, Any] = await request.json()
-    except Exception as e:
-        raise HTTPException(status_code=400, detail="Неверный JSON в теле запроса")
-
-    # Формируем ответ
-    response_data = {"response": "hello"}
-
-    logger.info(f"Обработан POST /hello. Тело запроса: {body}")
-
-    return JSONResponse(content=response_data)
-
-# Функция запуска бота и сервера
-async def run_bot_and_server():
-    global bot_app
-
-    # Инициализируем Telegram-бота
-    bot_app = Application.builder().token(TOKEN).build()
-    bot_app.add_handler(CommandHandler("start", start))
-    bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
-
-    logger.info("Бот запущен и ожидает сообщений...")
-
-    # Явная инициализация приложения
-    await bot_app.initialize()
-
-    # Запускаем бота в фоне
-    await bot_app.start()
-    await bot_app.updater.start_polling(
-        poll_interval=2.0,
-        timeout=20,
-        allowed_updates=None,
-        drop_pending_updates=False,
-    )
-
-    # FastAPI будет запущен в отдельном потоке (см. ниже)
-
-# Точка входа
-if __name__ == "__main__":
-    import uvicorn
-
-    # Запускаем бот и сервер параллельно
-    asyncio.run(run_bot_and_server())
-
-    # Запуск FastAPI (в отдельном потоке, т.к. asyncio.run уже работает)
-    uvicorn.run(app, host="0.0.0.0", port=443)
+if __name__ == '__main__':
+    main()
