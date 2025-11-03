@@ -4,8 +4,8 @@
 #docker build -t lapin_telegram_bot .
 #docker images
 #docker run lapin_telegram_bot
-#docker build . -t cr.yandex/crplo5125gv8esvpt42k/lapin_telegram_bot:1.0.9
-#docker push cr.yandex/crplo5125gv8esvpt42k/lapin_telegram_bot:1.0.9
+#docker build . -t cr.yandex/crplo5125gv8esvpt42k/lapin_telegram_bot:1.1.0
+#docker push cr.yandex/crplo5125gv8esvpt42k/lapin_telegram_bot:1.1.0
 #docker tag 9f3a31473d6a cr.yandex/crplo5125gv8esvpt42k/lapin_telegram_bot:1.0.2
 
 #TOKEN = "8482269363:AAEetzUmFKJGhgx9lCFBQHQptb-LMMJxbZ0"
@@ -25,8 +25,8 @@
 #Проверьте URL репозитория git remote -v
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from telegram import Update
-from telegram.ext import Application, MessageHandler, filters, ContextTypes
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import json
 import logging
 import asyncio
@@ -38,10 +38,38 @@ TOKEN = "8482269363:AAEetzUmFKJGhgx9lCFBQHQptb-LMMJxbZ0"
 application = None
 http_server = None
 
+def get_main_menu():
+    keyboard = [
+        [KeyboardButton("ТО авто")],
+        [KeyboardButton("Коммуналка")],
+        [KeyboardButton("Расходы")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    welcome_text = (
+        "Здравствуйте!\n\n"
+        "Я ваш персональный помощник. Выберите действие из меню ниже:"
+    )
+    await update.message.reply_text(welcome_text, reply_markup=get_main_menu())
 
 async def echo_icho(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("И чё?")
 
+
+async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text
+
+    if text == "ТО авто":
+        response = "Вы выбрали раздел «ТО авто». Здесь можно:\n- Записать на ТО\n- Проверить историю обслуживания\n- Рассчитать стоимость работ"
+    elif text == "Коммуналка":
+        response = "Вы выбрали раздел «Коммуналка». Здесь можно:\n- Оплатить услуги\n- Посмотреть историю платежей\n- Получить квитанцию"
+    elif text == "Расходы":
+        response = "Вы выбрали раздел «Расходы». Здесь можно:\n- Добавить новую трату\n- Просмотреть статистику\n- Установить бюджет"
+    else:
+        response = "И чё?"
+
+    await update.message.reply_text(response, reply_markup=get_main_menu())
 
 class WebhookHandler(BaseHTTPRequestHandler):
     def do_POST(self):
@@ -78,7 +106,9 @@ class WebhookHandler(BaseHTTPRequestHandler):
 def main():
     global application, http_server
     application = Application.builder().token(TOKEN).build()
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo_icho))
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_button))
+    application.add_handler(MessageHandler(filters.COMMAND & filters.Regex('^/(?!start)'), echo_icho))
 
     # Запускаем приложение Telegram в фоне
 
