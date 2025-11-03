@@ -4,9 +4,9 @@
 #docker build -t lapin_telegram_bot .
 #docker images
 #docker run lapin_telegram_bot
-#docker build . -t cr.yandex/crp3cq2680bsrvs24748/lapin_telegram_bot:latest
-#docker push cr.yandex/crp3cq2680bsrvs24748/lapin_telegram_bot:latest
-
+#docker build . -t cr.yandex/crplo5125gv8esvpt42k/lapin_telegram_bot:1.0.0
+#docker push cr.yandex/crplo5125gv8esvpt42k/lapin_telegram_bot:1.0.0
+#docker tag 9f3a31473d6a cr.yandex/crplo5125gv8esvpt42k/lapin_telegram_bot:1.0.0
 
 
 
@@ -22,7 +22,7 @@
 
 
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Union
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from telegram import Update
@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 
 # Глобальная переменная для доступа к боту из FastAPI
-bot_app: Application | None = None
+bot_app: Union[Application, None] = None
 
 
 # Функция для команды /start
@@ -114,6 +114,9 @@ async def run_bot_and_server():
 
     logger.info("Бот запущен и ожидает сообщений...")
 
+    # Явная инициализация приложения
+    await bot_app.initialize()
+
     # Запускаем бота в фоне
     await bot_app.start()
     await bot_app.updater.start_polling(
@@ -133,4 +136,4 @@ if __name__ == "__main__":
     asyncio.run(run_bot_and_server())
 
     # Запуск FastAPI (в отдельном потоке, т.к. asyncio.run уже работает)
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    uvicorn.run(app, host="0.0.0.0", port=443)
